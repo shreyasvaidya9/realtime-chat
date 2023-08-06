@@ -34,14 +34,6 @@ const SidebarChatList: FC<SidebarChatListProps> = ({ friends, sessionId }) => {
         pathname !==
         `/dashboard/chat/${chatHrefConstructor(sessionId, message.senderId)}`;
 
-      console.log("message.senderId", message.senderId);
-      console.log("sessionId", sessionId);
-      console.log(
-        "chatHrefConstructor value",
-        `/dashboard/chat/${chatHrefConstructor(sessionId, message.senderId)}`
-      );
-      console.log("pathname", pathname);
-
       if (!shouldNotify) {
         return;
       }
