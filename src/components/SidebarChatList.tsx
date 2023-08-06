@@ -1,19 +1,82 @@
 "use client";
 
-import { chatHrefConstructor } from "@/lib/utils";
+import { pusherClient } from "@/lib/pusher";
+import { chatHrefConstructor, toPusherKey } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { FC, useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
+import UnseenChatToast from "./UnseenChatToast";
 
 interface SidebarChatListProps {
   friends: User[];
   sessionId: string;
 }
 
+interface ExtendedMessage extends Message {
+  senderImg: string;
+  senderName: string;
+}
+
 const SidebarChatList: FC<SidebarChatListProps> = ({ friends, sessionId }) => {
   const router = useRouter();
   const pathname = usePathname();
   const [unseenMessages, setUnseenMessages] = useState<Message[]>([]);
+
+  useEffect(() => {
+    const userChatsPusherKey = toPusherKey(`user:${sessionId}:chats`);
+    const userFriendsPusherKey = toPusherKey(`user:${sessionId}:friends`);
+    const newMessageEvent = "new_message";
+    const newFriendEvent = "new_friend";
+
+    const newMessageHandler = (message: ExtendedMessage) => {
+      const shouldNotify =
+        pathname !==
+        `/dashboard/chat/${chatHrefConstructor(sessionId, message.senderId)}`;
+
+      console.log("message.senderId", message.senderId);
+      console.log("sessionId", sessionId);
+      console.log(
+        "chatHrefConstructor value",
+        `/dashboard/chat/${chatHrefConstructor(sessionId, message.senderId)}`
+      );
+      console.log("pathname", pathname);
+
+      if (!shouldNotify) {
+        return;
+      }
+
+      toast.custom((t) => (
+        <UnseenChatToast
+          t={t}
+          sessionId={sessionId}
+          senderId={message.senderId}
+          senderImg={message.senderImg}
+          senderMessage={message.text}
+          senderName={message.senderName}
+        />
+      ));
+
+      setUnseenMessages((prev) => [...prev, message]);
+    };
+    const newFriendHandler = () => {
+      router.refresh();
+    };
+
+    pusherClient.subscribe(userChatsPusherKey);
+    pusherClient.subscribe(userFriendsPusherKey);
+
+    pusherClient.bind(newMessageEvent, newMessageHandler);
+    pusherClient.bind(newFriendEvent, newFriendHandler);
+
+    return () => {
+      pusherClient.unsubscribe(userChatsPusherKey);
+      pusherClient.unsubscribe(userFriendsPusherKey);
+
+      pusherClient.unbind(newMessageEvent, newMessageHandler);
+      pusherClient.unbind(newFriendEvent, newFriendHandler);
+    };
+  }, [sessionId, router, pathname]);
 
   useEffect(() => {
     if (pathname?.includes("chat")) {

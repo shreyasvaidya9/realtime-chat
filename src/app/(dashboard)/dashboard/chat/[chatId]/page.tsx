@@ -7,6 +7,8 @@ import { getServerSession } from "next-auth";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
+export const revalidate = 10;
+
 interface PageProps {
   params: {
     chatId: string;
