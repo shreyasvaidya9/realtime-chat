@@ -57,17 +57,21 @@ export const POST = async (req: Request) => {
     const message = messageValidator.parse(messageData);
 
     // Notify all connected chat room clients
-    pusherServer.trigger(
+    await pusherServer.trigger(
       toPusherKey(`chat:${chatId}`),
       "incoming_message",
       message
     );
 
-    pusherServer.trigger(toPusherKey(`user:${friendId}:chats`), "new_message", {
-      ...message,
-      senderImg: sender.image,
-      senderName: sender.name,
-    });
+    await pusherServer.trigger(
+      toPusherKey(`user:${friendId}:chats`),
+      "new_message",
+      {
+        ...message,
+        senderImg: sender.image,
+        senderName: sender.name,
+      }
+    );
 
     // Everything is correct. Send the message
     await db.zadd(`chat:${chatId}:messages`, {

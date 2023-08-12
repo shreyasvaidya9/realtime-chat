@@ -59,19 +59,19 @@ export async function POST(req: Request) {
      * * Future: await db.srem(`user:${idToAdd}:outbound_friend_requests`, sessionUserId);
      */
     await Promise.all([
-      pusherServer.trigger(
+      await pusherServer.trigger(
         toPusherKey(`user:${idToAdd}:friends`),
         "new_friend",
         user
       ),
-      pusherServer.trigger(
+      await pusherServer.trigger(
         toPusherKey(`user:${sessionUserId}:friends`),
         "new_friend",
         friend
       ),
-      db.sadd(`user:${sessionUserId}:friends`, idToAdd),
-      db.sadd(`user:${idToAdd}:friends`, sessionUserId),
-      db.srem(`user:${sessionUserId}:incoming_friend_requests`, idToAdd),
+      await db.sadd(`user:${sessionUserId}:friends`, idToAdd),
+      await db.sadd(`user:${idToAdd}:friends`, sessionUserId),
+      await db.srem(`user:${sessionUserId}:incoming_friend_requests`, idToAdd),
     ]);
 
     return new Response("OK");
