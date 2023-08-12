@@ -23,18 +23,30 @@ const FriendRequestsSidebarOptions: FC<FriendRequestsSidebarOptionsProps> = ({
     const incomingFriendRequestsPusherKey = toPusherKey(
       `user:${sessionId}:incoming_friend_requests`
     );
+    const friendsPusherKey = toPusherKey(`user:${sessionId}:friends`);
+
     const incomingFriendRequests = "incoming_friend_requests";
+    const newFriend = "new_friend";
 
     const friendRequestHandler = () => {
       setUnseenRequestCount((prev) => prev + 1);
     };
+    const addedFriendHandler = () => {
+      setUnseenRequestCount((prev) => prev - 1);
+    };
 
     pusherClient.subscribe(incomingFriendRequestsPusherKey);
+    pusherClient.subscribe(friendsPusherKey);
+
     pusherClient.bind(incomingFriendRequests, friendRequestHandler);
+    pusherClient.bind(newFriend, addedFriendHandler);
 
     return () => {
       pusherClient.unsubscribe(incomingFriendRequestsPusherKey);
+      pusherClient.unsubscribe(friendsPusherKey);
+
       pusherClient.unbind(incomingFriendRequests, friendRequestHandler);
+      pusherClient.unbind(newFriend, addedFriendHandler);
     };
   }, [sessionId]);
 

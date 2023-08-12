@@ -44,20 +44,35 @@ export async function POST(req: Request) {
       });
     }
 
-    // Notify added user as friends of each other
-    pusherServer.trigger(
-      toPusherKey(`user:${idToAdd}:friends`),
-      "new_friend",
-      {}
-    );
+    const [userResponse, friendResponse] = (await Promise.all([
+      fetchRedis("get", `user:${sessionUserId}`),
+      fetchRedis("get", `user:${idToAdd}`),
+    ])) as [string, string];
 
-    // Add both users as friends of each other
-    await db.sadd(`user:${sessionUserId}:friends`, idToAdd);
-    await db.sadd(`user:${idToAdd}:friends`, sessionUserId);
+    const user = JSON.parse(userResponse) as User;
+    const friend = JSON.parse(friendResponse) as User;
 
-    // Remove the idToAdd from the incoming friend requests
-    await db.srem(`user:${sessionUserId}:incoming_friend_requests`, idToAdd);
-    // await db.srem(`user:${idToAdd}:outbound_friend_requests`, sessionUserId);
+    /**
+     * * First two elements: pusher triggers which notify both friends when added
+     * * Next two elements: Add the users as friends of each other in db
+     * * Remove the incoming friends requests from the current user
+     * * Future: await db.srem(`user:${idToAdd}:outbound_friend_requests`, sessionUserId);
+     */
+    await Promise.all([
+      pusherServer.trigger(
+        toPusherKey(`user:${idToAdd}:friends`),
+        "new_friend",
+        user
+      ),
+      pusherServer.trigger(
+        toPusherKey(`user:${sessionUserId}:friends`),
+        "new_friend",
+        friend
+      ),
+      db.sadd(`user:${sessionUserId}:friends`, idToAdd),
+      db.sadd(`user:${idToAdd}:friends`, sessionUserId),
+      db.srem(`user:${sessionUserId}:incoming_friend_requests`, idToAdd),
+    ]);
 
     return new Response("OK");
   } catch (error) {
